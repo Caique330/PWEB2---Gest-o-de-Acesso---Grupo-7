@@ -1,0 +1,77 @@
+-- TABELA: USUARIO
+CREATE TABLE Usuario (
+    id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(100),
+    login VARCHAR(50),
+    senha VARCHAR(100),
+    email VARCHAR(100),
+    status BOOLEAN
+);
+
+-- TABELA: PERFIL
+CREATE TABLE Perfil (
+    id_perfil INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(50),
+    descricao VARCHAR(150)
+);
+
+-- TABELA: PERMISSAO
+CREATE TABLE Permissao (
+    id_permissao INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(50),
+    tipo VARCHAR(20)
+);
+
+-- TABELA: SISTEMA
+CREATE TABLE Sistema (
+    id_sistema INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(100),
+    descricao VARCHAR(150)
+);
+
+-- TABELA: ACESSO
+CREATE TABLE Acesso (
+    id_acesso INT PRIMARY KEY AUTO_INCREMENT,
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    acao VARCHAR(100),
+    fk_usuario INT,
+    fk_sistema INT,
+    FOREIGN KEY (fk_usuario) REFERENCES Usuario(id_usuario),
+    FOREIGN KEY (fk_sistema) REFERENCES Sistema(id_sistema)
+);
+
+-- TABELA: TENTATIVAINVALIDA
+CREATE TABLE TentativaInvalida (
+    id_tentativa INT PRIMARY KEY AUTO_INCREMENT,
+    usuario_login VARCHAR(50),
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    motivo VARCHAR(150),
+    origem_ip VARCHAR(50)
+);
+
+-- RELACIONAMENTO: PERFIL ↔ PERMISSAO (N:N)
+CREATE TABLE Concede (
+    id_perfil INT,
+    id_permissao INT,
+    PRIMARY KEY (id_perfil, id_permissao),
+    FOREIGN KEY (id_perfil) REFERENCES Perfil(id_perfil),
+    FOREIGN KEY (id_permissao) REFERENCES Permissao(id_permissao)
+);
+
+-- RELACIONAMENTO: USUARIO ↔ PERFIL (N:N)
+CREATE TABLE Possui (
+    id_usuario INT,
+    id_perfil INT,
+    PRIMARY KEY (id_usuario, id_perfil),
+    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario),
+    FOREIGN KEY (id_perfil) REFERENCES Perfil(id_perfil)
+);
+
+-- RELACIONAMENTO: USUARIO ↔ TENTATIVAINVALIDA (1:N)
+CREATE TABLE Tenta (
+    id_usuario INT,
+    id_tentativa INT,
+    PRIMARY KEY (id_usuario, id_tentativa),
+    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario),
+    FOREIGN KEY (id_tentativa) REFERENCES TentativaInvalida(id_tentativa)
+);
