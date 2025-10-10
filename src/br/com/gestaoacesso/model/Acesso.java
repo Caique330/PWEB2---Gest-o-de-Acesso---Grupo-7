@@ -33,3 +33,4 @@ public class Acesso {
 
     public String getAcao() { return acao; }
     public void setAcao(String acao) { this.acao = acao; }
+}
