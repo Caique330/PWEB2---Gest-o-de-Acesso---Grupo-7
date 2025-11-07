@@ -1,0 +1,133 @@
+package br.com.techmaster.g7.dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import br.com.techmaster.g7.model.LogAcesso;
+import br.com.techmaster.g7.model.LogTentativaFalha;
+import br.com.techmaster.g7.util.H2Connection;
+
+public class LogDAO {
+
+    /**
+     * Registra um acesso bem-sucedido (T_LOG_ACESSO)
+     */
+    public void registrarAcesso(LogAcesso log) {
+        String sql = "INSERT INTO T_LOG_ACESSO (id_usuario, id_recurso, acao_executada, ip_origem) " +
+                     "VALUES (?, ?, ?, ?)";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, log.getIdUsuario());
+            pstmt.setInt(2, log.getIdRecurso()); // Corrigido de 'getIdRecuro'
+            pstmt.setString(3, log.getAcaoExecutada());
+            pstmt.setString(4, log.getIpOrigem());
+            
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao registrar log de ACESSO: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Registra uma tentativa de acesso negada ou suspeita (T_LOG_TENTATIVA_FALHA)
+     */
+    public void registrarFalha(LogTentativaFalha logFalha) {
+        String sql = "INSERT INTO T_LOG_TENTATIVA_FALHA (login_tentado, motivo_falha, ip_origem, user_agent) " +
+                     "VALUES (?, ?, ?, ?)";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, logFalha.getLoginTentado());
+            pstmt.setString(2, logFalha.getMotivoFalha());
+            pstmt.setString(3, logFalha.getIpOrigem());
+            pstmt.setString(4, logFalha.getUserAgent());
+            
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao registrar log de FALHA: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Lista os logs de acesso bem-sucedidos (T_LOG_ACESSO).
+     * CORRIGIDO: Agora usa getTimestamp() diretamente (compatível com java.util.Date)
+     */
+    public List<LogAcesso> listarLogsAcesso() {
+        List<LogAcesso> logs = new ArrayList<>();
+        String sql = "SELECT log.*, u.nome_completo, r.nome_recurso " +
+                     "FROM T_LOG_ACESSO log " +
+                     "JOIN T_USUARIO u ON log.id_usuario = u.id_usuario " +
+                     "JOIN T_RECURSO r ON log.id_recurso = r.id_recurso " +
+                     "ORDER BY log.data_hora_acesso DESC " +
+                     "LIMIT 100"; 
+
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            
+            while (rs.next()) {
+                LogAcesso log = new LogAcesso();
+                log.setId(rs.getInt("id_log_acesso"));
+                
+                // --- CORREÇÃO AQUI ---
+                log.setDataHoraAcesso(rs.getTimestamp("data_hora_acesso")); 
+                
+                log.setIpOrigem(rs.getString("ip_origem"));
+                log.setIdUsuario(rs.getInt("id_usuario")); 
+                log.setIdRecurso(rs.getInt("id_recurso"));
+                log.setAcaoExecutada(rs.getString("acao_executada") + " (Usuário: " + rs.getString("nome_completo") + ")");
+                
+                logs.add(log);
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao listar logs de acesso: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return logs;
+    }
+
+    /**
+     * Lista os logs de tentativas de falha (T_LOG_TENTATIVA_FALHA).
+     * CORRIGIDO: Agora usa getTimestamp() diretamente
+     */
+    public List<LogTentativaFalha> listarLogsFalha() {
+        List<LogTentativaFalha> logs = new ArrayList<>();
+        String sql = "SELECT * FROM T_LOG_TENTATIVA_FALHA " +
+                     "ORDER BY data_hora_tentativa DESC " +
+                     "LIMIT 100"; 
+
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            
+            while (rs.next()) {
+                LogTentativaFalha log = new LogTentativaFalha();
+                log.setId(rs.getInt("id_log_falha"));
+                log.setLoginTentado(rs.getString("login_tentado"));
+
+                // --- CORREÇÃO AQUI ---
+                log.setDataHoraTentativa(rs.getTimestamp("data_hora_tentativa"));
+                
+                log.setMotivoFalha(rs.getString("motivo_falha"));
+                log.setIpOrigem(rs.getString("ip_origem"));
+                log.setUserAgent(rs.getString("user_agent"));
+                logs.add(log);
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao listar logs de falha: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return logs;
+    }
+}

@@ -1,0 +1,110 @@
+-- Remove tabelas existentes para um início limpo
+DROP TABLE IF EXISTS T_LOG_TENTATIVA_FALHA;
+DROP TABLE IF EXISTS T_LOG_ACESSO;
+DROP TABLE IF EXISTS T_REGRA_PERMISSAO;
+DROP TABLE IF EXISTS T_USUARIO_PERFIL;
+DROP TABLE IF EXISTS T_PERMISSAO;
+DROP TABLE IF EXISTS T_RECURSO;
+DROP TABLE IF EXISTS T_PERFIL;
+DROP TABLE IF EXISTS T_USUARIO;
+
+-- 1. T_USUARIO: Registra os dados dos usuários [cite: 5, 22, 42]
+CREATE TABLE T_USUARIO (
+    id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+    nome_completo VARCHAR(255) NOT NULL,
+    login VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    senha_hash VARCHAR(255) NOT NULL, -- Armazenar sempre hash (ex: SHA-256)
+    status VARCHAR(20) NOT NULL DEFAULT 'ATIVO' -- (ATIVO, INATIVO, BLOQUEADO) [cite: 42]
+);
+
+-- 2. T_PERFIL: Define os perfis de acesso [cite: 6, 23, 46]
+CREATE TABLE T_PERFIL (
+    id_perfil INT PRIMARY KEY AUTO_INCREMENT,
+    nome_perfil VARCHAR(100) NOT NULL UNIQUE,
+    descricao VARCHAR(500)
+);
+
+-- 3. T_USUARIO_PERFIL: Associa usuários a um ou mais perfis [cite: 10, 13, 44, 48]
+CREATE TABLE T_USUARIO_PERFIL (
+    id_usuario INT NOT NULL,
+    id_perfil INT NOT NULL,
+    PRIMARY KEY (id_usuario, id_perfil),
+    FOREIGN KEY (id_usuario) REFERENCES T_USUARIO(id_usuario),
+    FOREIGN KEY (id_perfil) REFERENCES T_PERFIL(id_perfil)
+);
+
+-- 4. T_RECURSO: O que será acessado (sistema, serviço ou recurso) [cite: 7, 30, 50]
+CREATE TABLE T_RECURSO (
+    id_recurso INT PRIMARY KEY AUTO_INCREMENT,
+    nome_recurso VARCHAR(255) NOT NULL, -- Ex: 'Sistema de Faturamento', 'API de Clientes'
+    tipo_recurso VARCHAR(50) NOT NULL -- (SISTEMA, SERVICO, RECURSO) [cite: 50]
+);
+
+-- 5. T_PERMISSAO: Os tipos de ações (leitura, escrita) [cite: 51]
+CREATE TABLE T_PERMISSAO (
+    id_permissao INT PRIMARY KEY AUTO_INCREMENT,
+    nome_permissao VARCHAR(100) NOT NULL UNIQUE -- (LEITURA, ESCRITA, EXECUCAO, EXCLUSAO) [cite: 51]
+);
+
+-- 6. T_REGRA_PERMISSAO: Vincula perfis a permissões em recursos específicos [cite: 37, 52]
+-- Esta é a tabela central de autorização.
+CREATE TABLE T_REGRA_PERMISSAO (
+    id_regra INT PRIMARY KEY AUTO_INCREMENT,
+    id_perfil INT NOT NULL,
+    id_recurso INT NOT NULL,
+    id_permissao INT NOT NULL,
+    FOREIGN KEY (id_perfil) REFERENCES T_PERFIL(id_perfil),
+    FOREIGN KEY (id_recurso) REFERENCES T_RECURSO(id_recurso),
+    FOREIGN KEY (id_permissao) REFERENCES T_PERMISSAO(id_permissao),
+    UNIQUE (id_perfil, id_recurso, id_permissao)
+);
+
+-- 7. T_LOG_ACESSO: Auditoria de acessos realizados [cite: 8, 14, 31, 54]
+CREATE TABLE T_LOG_ACESSO (
+    id_log_acesso INT PRIMARY KEY AUTO_INCREMENT,
+    id_usuario INT NOT NULL,
+    id_recurso INT NOT NULL,
+    data_hora_acesso TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    acao_executada VARCHAR(255), -- Ex: 'Login', 'Consulta Relatório X' [cite: 14]
+    ip_origem VARCHAR(45), -- [cite: 55]
+    FOREIGN KEY (id_usuario) REFERENCES T_USUARIO(id_usuario),
+    FOREIGN KEY (id_recurso) REFERENCES T_RECURSO(id_recurso)
+);
+
+-- 8. T_LOG_TENTATIVA_FALHA: Registro de tentativas de acesso negadas/suspeitas [cite: 9, 15, 32, 58]
+CREATE TABLE T_LOG_TENTATIVA_FALHA (
+    id_log_falha INT PRIMARY KEY AUTO_INCREMENT,
+    login_tentado VARCHAR(255),
+    data_hora_tentativa TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    motivo_falha VARCHAR(255) NOT NULL, -- Ex: 'Senha incorreta', 'Usuário não existe' [cite: 59]
+    ip_origem VARCHAR(45), -- [cite: 59]
+    user_agent VARCHAR(500)
+);
+
+-- Inserção de dados iniciais para teste
+INSERT INTO T_USUARIO (nome_completo, login, email, senha_hash, status) 
+VALUES ('Administrador Master', 'admin', 'admin@techmaster.com', 'admin123', 'ATIVO');
+-- Em um sistema real, 'admin123' DEVE ser um hash (ex: BCrypt ou SHA-256)
+
+INSERT INTO T_PERFIL (nome_perfil, descricao) 
+VALUES ('ADMINISTRADOR', 'Acesso total a todos os sistemas');
+
+INSERT INTO T_USUARIO_PERFIL (id_usuario, id_perfil) VALUES (1, 1);
+
+-- Adicionar este INSERT ao final das suas inserções
+INSERT INTO T_RECURSO (nome_recurso, tipo_recurso) 
+VALUES ('Sistema de Login', 'SISTEMA');
+
+UPDATE T_USUARIO 
+SET senha_hash = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' 
+WHERE login = 'admin';
+
+COMMIT;
+
+-- Insere os tipos básicos de permissão
+INSERT INTO T_PERMISSAO (nome_permissao) VALUES ('LEITURA');
+INSERT INTO T_PERMISSAO (nome_permissao) VALUES ('ESCRITA');
+INSERT INTO T_PERMISSAO (nome_permissao) VALUES ('EXCLUSAO');
+INSERT INTO T_PERMISSAO (nome_permissao) VALUES ('EXECUCAO');
+COMMIT;

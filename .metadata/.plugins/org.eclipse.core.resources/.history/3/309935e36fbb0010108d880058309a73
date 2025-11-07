@@ -1,0 +1,79 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Perfis - TechMaster</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+        body { font-family: 'Roboto', sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+        .header { background-color: #ffffff; padding: 1rem 2rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { color: #007bff; margin: 0; font-weight: 700; }
+        .header-nav a { text-decoration: none; color: #555; font-weight: 500; margin-left: 1rem; }
+        .header-nav a.logout { color: #dc3545; }
+        .container { padding: 2rem; max-width: 1200px; margin: 2rem auto; background-color: #fff; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .page-header h2 { margin: 0; }
+        .btn { text-decoration: none; padding: 0.6rem 1.2rem; border-radius: 5px; font-weight: 500; transition: background-color 0.3s ease; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.9rem; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+        .actions a { margin-right: 0.5rem; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>TechMaster G7</h1>
+        <div class="header-nav">
+        <a href="${pageContext.request.contextPath}/recursos">Recursos</a>
+            <a href="${pageContext.request.contextPath}/dashboard">Dashboard</a>
+            <a href="${pageContext.request.contextPath}/usuarios">Usuários</a>
+            <a href="${pageContext.request.contextPath}/logout" class="logout">Sair</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Gestão de Perfis</h2>
+            <a href="${pageContext.request.contextPath}/perfis?action=new" class="btn btn-primary">Novo Perfil</a>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome do Perfil</th>
+                    <th>Descrição</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <c:forEach var="perfil" items="${listaPerfis}">
+                    <tr>
+                        <td>${perfil.id}</td>
+                        <td>${perfil.nomePerfil}</td>
+                        <td>${perfil.descricao}</td>
+                        <td class="actions">
+                            <a href="${pageContext.request.contextPath}/perfis?action=edit&id=${perfil.id}" class="btn btn-secondary">Editar</a>
+                            
+                            <c:if test="${perfil.id != 1}">
+                                <a href="${pageContext.request.contextPath}/perfis?action=delete&id=${perfil.id}" 
+                                   class="btn btn-danger" 
+                                   onclick="return confirm('Tem certeza que deseja excluir ${perfil.nomePerfil}?');">
+                                   Excluir
+                                </a>
+                            </c:if>
+                        </td>
+                    </tr>
+                </c:forEach>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

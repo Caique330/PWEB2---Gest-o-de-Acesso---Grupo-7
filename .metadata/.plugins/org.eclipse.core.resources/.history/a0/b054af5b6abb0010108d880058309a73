@@ -1,0 +1,81 @@
+package br.com.techmaster.g7.dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import br.com.techmaster.g7.model.Perfil;
+import br.com.techmaster.g7.model.Usuario;
+import br.com.techmaster.g7.util.H2Connection;
+import br.com.techmaster.g7.util.HashUtil;
+
+public class UsuarioDAO {
+
+	/**
+     * Valida o login e senha USANDO HASH.
+     */
+    public Usuario validarLogin(String login, String senha) {
+        // Gera o hash da senha que o usuário digitou
+        String hashDaSenhaDigitada = HashUtil.gerarHashSHA256(senha);
+        
+        String sql = "SELECT * FROM T_USUARIO WHERE login = ? AND senha_hash = ? AND status = 'ATIVO'";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, login);
+            pstmt.setString(2, hashDaSenhaDigitada); // Compara HASH com HASH
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    // ... (o restante do método continua igual, carregando o usuário e perfis)
+                    Usuario usuario = new Usuario();
+                    usuario.setId(rs.getInt("id_usuario"));
+                    usuario.setNomeCompleto(rs.getString("nome_completo"));
+                    // ... (etc)
+                    usuario.setPerfis(buscarPerfisPorUsuario(usuario.getId(), conn));
+                    return usuario;
+                }
+            }
+        } catch (SQLException e) {
+            // ... (log de erro)
+        }
+        return null;
+    }
+
+    /**
+     * Busca os perfis associados a um ID de usuário.
+     * Reutiliza a conexão existente para evitar abrir/fechar múltiplas conexões.
+     */
+    private List<Perfil> buscarPerfisPorUsuario(int idUsuario, Connection conn) throws SQLException {
+        List<Perfil> perfis = new ArrayList<>();
+        
+        // Consulta com JOIN entre T_USUARIO_PERFIL e T_PERFIL
+        String sql = "SELECT p.id_perfil, p.nome_perfil, p.descricao " +
+                     "FROM T_PERFIL p " +
+                     "JOIN T_USUARIO_PERFIL up ON p.id_perfil = up.id_perfil " +
+                     "WHERE up.id_usuario = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, idUsuario);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Perfil perfil = new Perfil();
+                    perfil.setId(rs.getInt("id_perfil"));
+                    perfil.setNomePerfil(rs.getString("nome_perfil"));
+                    perfil.setDescricao(rs.getString("descricao"));
+                    perfis.add(perfil);
+                }
+            }
+        }
+        
+        return perfis;
+    }
+    
+    // TODO: Criar métodos para registrar T_LOG_ACESSO e T_LOG_TENTATIVA_FALHA
+    // Estes métodos serão chamados pelo LoginServlet
+}

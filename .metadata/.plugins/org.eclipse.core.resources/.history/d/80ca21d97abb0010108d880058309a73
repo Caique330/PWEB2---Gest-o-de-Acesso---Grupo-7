@@ -1,0 +1,28 @@
+package br.com.techmaster.g7.model;
+
+import java.time.LocalDateTime;
+
+// Representa T_LOG_TENTATIVA_FALHA
+public class LogTentativaFalha {
+
+    private int id;
+    private String loginTentado;
+    private LocalDateTime dataHoraTentativa;
+    private String motivoFalha;
+    private String ipOrigem;
+    private String userAgent;
+    
+    // Getters e Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public String getLoginTentado() { return loginTentado; }
+    public void setLoginTentado(String loginTentado) { this.loginTentado = loginTentado; }
+    public LocalDateTime getDataHoraTentativa() { return dataHoraTentativa; }
+    public void setDataHoraTentativa(LocalDateTime dataHoraTentativa) { this.dataHoraTentativa = dataHoraTentativa; }
+    public String getMotivoFalha() { return motivoFalha; }
+    public void setMotivoFalha(String motivoFalha) { this.motivoFalha = motivoFalha; }
+    public String getIpOrigem() { return ipOrigem; }
+    public void setIpOrigem(String ipOrigem) { this.ipOrigem = ipOrigem; }
+    public String getUserAgent() { return userAgent; }
+    public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
+}

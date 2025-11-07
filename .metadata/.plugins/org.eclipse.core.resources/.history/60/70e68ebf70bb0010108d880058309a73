@@ -1,0 +1,62 @@
+package br.com.techmaster.g7.dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import br.com.techmaster.g7.model.LogAcesso;
+import br.com.techmaster.g7.model.LogTentativaFalha;
+import br.com.techmaster.g7.util.H2Connection;
+
+public class LogDAO {
+
+    /**
+     * Registra um acesso bem-sucedido (T_LOG_ACESSO)
+     * 
+     */
+    public void registrarAcesso(LogAcesso log) {
+        // O ID e data_hora são automáticos (AUTO_INCREMENT e DEFAULT CURRENT_TIMESTAMP)
+        String sql = "INSERT INTO T_LOG_ACESSO (id_usuario, id_recurso, acao_executada, ip_origem) " +
+                     "VALUES (?, ?, ?, ?)";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, log.getIdUsuario());
+            pstmt.setInt(2, log.getIdRecurso());
+            pstmt.setString(3, log.getAcaoExecutada());
+            pstmt.setString(4, log.getIpOrigem());
+            
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao registrar log de ACESSO: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Registra uma tentativa de acesso negada ou suspeita (T_LOG_TENTATIVA_FALHA)
+     * [cite: 15, 58, 59]
+     */
+    public void registrarFalha(LogTentativaFalha logFalha) {
+        // O ID e data_hora são automáticos
+        String sql = "INSERT INTO T_LOG_TENTATIVA_FALHA (login_tentado, motivo_falha, ip_origem, user_agent) " +
+                     "VALUES (?, ?, ?, ?)";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, logFalha.getLoginTentado());
+            pstmt.setString(2, logFalha.getMotivoFalha());
+            pstmt.setString(3, logFalha.getIpOrigem());
+            pstmt.setString(4, logFalha.getUserAgent());
+            
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao registrar log de FALHA: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}

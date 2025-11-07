@@ -1,0 +1,134 @@
+package br.com.techmaster.g7.api;
+
+import java.io.IOException;
+import java.util.List;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import br.com.techmaster.g7.dao.RecursoDAO;
+import br.com.techmaster.g7.model.Recurso;
+
+/**
+ * API RESTful para o CRUD de Recursos.
+ * Mapeado para /api/recursos/*
+ */
+@WebServlet("/api/recursos/*")
+public class RecursoApiServlet extends BaseApiServlet {
+    
+    private static final long serialVersionUID = 1L;
+    private RecursoDAO recursoDAO;
+
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        this.recursoDAO = new RecursoDAO();
+    }
+
+    /**
+     * READ (Leitura)
+     * GET /api/recursos -> Lista todos
+     * GET /api/recursos/1 -> Busca por ID
+     */
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        configureCorsHeaders(resp);
+        
+        Integer recursoId = getResourceId(req);
+
+        if (recursoId == null) {
+            List<Recurso> recursos = recursoDAO.listarRecursos();
+            writeJsonResponse(resp, recursos, HttpServletResponse.SC_OK);
+        } else {
+            Recurso recurso = recursoDAO.buscarRecursoPorId(recursoId);
+            if (recurso == null) {
+                writeJsonMessage(resp, "Recurso não encontrado", HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+            writeJsonResponse(resp, recurso, HttpServletResponse.SC_OK);
+        }
+    }
+
+    /**
+     * CREATE (Criação)
+     * POST /api/recursos -> Cria um novo recurso
+     */
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        configureCorsHeaders(resp);
+        
+        Recurso novoRecurso = readJsonRequest(req, Recurso.class);
+        recursoDAO.inserirRecurso(novoRecurso);
+        writeJsonMessage(resp, "Recurso criado com sucesso", HttpServletResponse.SC_CREATED);
+    }
+
+    /**
+     * UPDATE (Atualização)
+     * PUT /api/recursos/1 -> Atualiza o recurso com ID 1
+     */
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        configureCorsHeaders(resp);
+        
+        Integer recursoId = getResourceId(req);
+        if (recursoId == null) {
+            writeJsonMessage(resp, "ID do recurso é obrigatório", HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
+
+        Recurso recurso = readJsonRequest(req, Recurso.class);
+        recurso.setId(recursoId);
+        
+        recursoDAO.atualizarRecurso(recurso);
+        writeJsonResponse(resp, recurso, HttpServletResponse.SC_OK);
+    }
+
+    /**
+     * DELETE (Remoção)
+     * DELETE /api/recursos/1 -> Exclui o recurso com ID 1
+     */
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        configureCorsHeaders(resp);
+        
+        Integer recursoId = getResourceId(req);
+        if (recursoId == null) {
+            writeJsonMessage(resp, "ID do recurso é obrigatório", HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
+
+        // Regra de negócio: Não permitir exclusão do 'Sistema de Login' (ID 1)
+        if (recursoId == 1) {
+            writeJsonMessage(resp, "Não é permitido excluir o 'Sistema de Login' (ID 1)", HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
+        if (recursoDAO.buscarRecursoPorId(recursoId) == null) {
+            writeJsonMessage(resp, "Recurso não encontrado", HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        
+        recursoDAO.excluirRecurso(recursoId);
+        writeJsonMessage(resp, "Recurso excluído com sucesso", HttpServletResponse.SC_OK);
+    }
+
+    /**
+     * Método utilitário para extrair o ID da URL (ex: /1)
+     */
+    private Integer getResourceId(HttpServletRequest req) {
+        String pathInfo = req.getPathInfo();
+        if (pathInfo == null || pathInfo.equals("/")) {
+            return null;
+        }
+        String[] parts = pathInfo.split("/");
+        if (parts.length > 1) {
+            try {
+                return Integer.parseInt(parts[1]);
+            } catch (NumberFormatException e) {
+                // Ignora
+            }
+        }
+        return null;
+    }}

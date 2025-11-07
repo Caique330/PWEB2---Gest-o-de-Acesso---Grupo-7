@@ -1,0 +1,41 @@
+package br.com.techmaster.g7.model;
+
+// 1. IMPORTAÇÃO ALTERADA
+import java.util.Date; 
+
+// Representa T_LOG_ACESSO
+public class LogAcesso {
+
+    private int id;
+    private int idUsuario;
+    private int idRecurso;
+    
+    // 2. TIPO ALTERADO
+    private Date dataHoraAcesso; 
+    
+    private String acaoExecutada;
+    private String ipOrigem;
+    
+    // 3. GETTERS E SETTERS ALTERADOS
+    
+    // Getters e Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public int getIdUsuario() { return idUsuario; }
+    public void setIdUsuario(int idUsuario) { this.idUsuario = idUsuario; }
+    public int getIdRecurso() { return idRecurso; }
+    public void setIdRecurso(int idRecurso) { this.idRecurso = idRecurso; }
+    public String getAcaoExecutada() { return acaoExecutada; }
+    public void setAcaoExecutada(String acaoExecutada) { this.acaoExecutada = acaoExecutada; }
+    public String getIpOrigem() { return ipOrigem; }
+    public void setIpOrigem(String ipOrigem) { this.ipOrigem = ipOrigem; }
+
+    // Getter alterado
+    public Date getDataHoraAcesso() {
+        return dataHoraAcesso;
+    }
+    // Setter alterado
+    public void setDataHoraAcesso(Date dataHoraAcesso) {
+        this.dataHoraAcesso = dataHoraAcesso;
+    }
+}

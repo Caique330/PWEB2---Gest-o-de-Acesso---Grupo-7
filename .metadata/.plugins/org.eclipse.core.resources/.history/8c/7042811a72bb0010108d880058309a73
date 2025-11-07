@@ -1,0 +1,139 @@
+package br.com.techmaster.g7.dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet; // <--- Importação CRÍTICA para os novos métodos
+import java.sql.SQLException;
+import java.util.ArrayList; // (Você já corrigiu este)
+import java.util.List;      // (Você já corrigiu este)
+
+import br.com.techmaster.g7.model.LogAcesso;
+import br.com.techmaster.g7.model.LogTentativaFalha;
+import br.com.techmaster.g7.util.H2Connection;
+
+public class LogDAO {
+	
+	
+
+    /**
+     * Registra um acesso bem-sucedido (T_LOG_ACESSO)
+     * 
+     */
+    public void registrarAcesso(LogAcesso log) {
+        // O ID e data_hora são automáticos (AUTO_INCREMENT e DEFAULT CURRENT_TIMESTAMP)
+        String sql = "INSERT INTO T_LOG_ACESSO (id_usuario, id_recurso, acao_executada, ip_origem) " +
+                     "VALUES (?, ?, ?, ?)";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, log.getIdUsuario());
+            pstmt.setInt(2, log.getIdRecurso());
+            pstmt.setString(3, log.getAcaoExecutada());
+            pstmt.setString(4, log.getIpOrigem());
+            
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao registrar log de ACESSO: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Registra uma tentativa de acesso negada ou suspeita (T_LOG_TENTATIVA_FALHA)
+     * [cite: 15, 58, 59]
+     */
+    public void registrarFalha(LogTentativaFalha logFalha) {
+        // O ID e data_hora são automáticos
+        String sql = "INSERT INTO T_LOG_TENTATIVA_FALHA (login_tentado, motivo_falha, ip_origem, user_agent) " +
+                     "VALUES (?, ?, ?, ?)";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, logFalha.getLoginTentado());
+            pstmt.setString(2, logFalha.getMotivoFalha());
+            pstmt.setString(3, logFalha.getIpOrigem());
+            pstmt.setString(4, logFalha.getUserAgent());
+            
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao registrar log de FALHA: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+     // ... (mantenha registrarAcesso e registrarFalha)
+
+        /**
+         * Lista os logs de acesso bem-sucedidos (T_LOG_ACESSO).
+         * Faz JOIN com Usuario e Recurso para exibir nomes.
+         */
+        public List<LogAcesso> listarLogsAcesso() {
+            List<LogAcesso> logs = new ArrayList<>();
+            // Query com JOIN para pegar os nomes, ordenada pela data mais recente
+            String sql = "SELECT log.*, u.nome_completo, r.nome_recurso " +
+                         "FROM T_LOG_ACESSO log " +
+                         "JOIN T_USUARIO u ON log.id_usuario = u.id_usuario " +
+                         "JOIN T_RECURSO r ON log.id_recurso = r.id_recurso " +
+                         "ORDER BY log.data_hora_acesso DESC " +
+                         "LIMIT 100"; // Limita aos 100 mais recentes
+
+            try (Connection conn = H2Connection.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql);
+                 ResultSet rs = pstmt.executeQuery()) {
+                
+                while (rs.next()) {
+                    LogAcesso log = new LogAcesso();
+                    log.setId(rs.getInt("id_log_acesso"));
+                    log.setDataHoraAcesso(rs.getTimestamp("data_hora_acesso").toLocalDateTime());
+                    log.setAcaoExecutada(rs.getString("acao_executada"));
+                    log.setIpOrigem(rs.getString("ip_origem"));
+                    
+                    // Dados dos JOINs (vamos "pegar carona" no model LogAcesso)
+                    // Usamos idUsuario para guardar o nome e idRecurso para o nome do recurso
+                    log.setIdUsuario(rs.getInt("id_usuario")); // Mantemos o ID
+                    log.setAcaoExecutada(log.getAcaoExecutada() + " (Usuário: " + rs.getString("nome_completo") + ")");
+                    log.setIdRecurso(rs.getInt("id_recurso")); // Mantemos o ID
+                    
+                    logs.add(log);
+                }
+            } catch (SQLException e) {
+                System.err.println("Erro ao listar logs de acesso: " + e.getMessage());
+                e.printStackTrace();
+            }
+            return logs;
+        }
+
+        /**
+         * Lista os logs de tentativas de falha (T_LOG_TENTATIVA_FALHA).
+         */
+        public List<LogTentativaFalha> listarLogsFalha() {
+            List<LogTentativaFalha> logs = new ArrayList<>();
+            String sql = "SELECT * FROM T_LOG_TENTATIVA_FALHA " +
+                         "ORDER BY data_hora_tentativa DESC " +
+                         "LIMIT 100"; // Limita aos 100 mais recentes
+
+            try (Connection conn = H2Connection.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql);
+                 ResultSet rs = pstmt.executeQuery()) {
+                
+                while (rs.next()) {
+                    LogTentativaFalha log = new LogTentativaFalha();
+                    log.setId(rs.getInt("id_log_falha"));
+                    log.setLoginTentado(rs.getString("login_tentado"));
+                    log.setDataHoraTentativa(rs.getTimestamp("data_hora_tentativa").toLocalDateTime());
+                    log.setMotivoFalha(rs.getString("motivo_falha"));
+                    log.setIpOrigem(rs.getString("ip_origem"));
+                    log.setUserAgent(rs.getString("user_agent"));
+                    logs.add(log);
+                }
+            } catch (SQLException e) {
+                System.err.println("Erro ao listar logs de falha: " + e.getMessage());
+                e.printStackTrace();
+            }
+            return logs;
+        }
+    }
+}

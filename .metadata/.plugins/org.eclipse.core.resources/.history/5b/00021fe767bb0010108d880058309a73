@@ -1,0 +1,5 @@
+package br.com.techmaster.g7.filter;
+
+public class AuthFilter {
+
+}

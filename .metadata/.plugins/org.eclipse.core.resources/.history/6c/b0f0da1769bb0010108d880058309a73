@@ -1,0 +1,33 @@
+package br.com.techmaster.g7.controller;
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import br.com.techmaster.g7.dao.LogDAO;
+import br.com.techmaster.g7.model.LogAcesso;
+import br.com.techmaster.g7.model.Usuario;
+import br.com.techmaster.g7.util.RequestUtil;
+
+@WebServlet("/logout")
+public class LogoutServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        HttpSession session = request.getSession(false); // Pega a sessão, não cria uma nova
+        
+        if (session != null) {
+            // TODO: Registrar o LOGOUT no T_LOG_ACESSO
+            
+            session.invalidate(); // Invalida a sessão (remove todos os atributos)
+        }
+        
+        // Redireciona de volta para a tela de login
+        response.sendRedirect(request.getContextPath() + "/login");
+    }
+}

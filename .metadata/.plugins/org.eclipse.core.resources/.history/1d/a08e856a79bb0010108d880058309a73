@@ -1,0 +1,137 @@
+package br.com.techmaster.g7.controller;
+
+import java.io.IOException;
+import java.util.List;
+
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import br.com.techmaster.g7.dao.UsuarioDAO;
+import br.com.techmaster.g7.model.Usuario;
+
+@WebServlet("/usuarios")
+public class UsuarioServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+    private UsuarioDAO usuarioDAO;
+
+    public void init() {
+        usuarioDAO = new UsuarioDAO();
+    }
+
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        // O Filtro (AuthFilter) já protegeu esta URL.
+        // TODO: Implementar Autorização (Verificar se o usuário tem perfil ADMIN)
+        
+        request.setCharacterEncoding("UTF-8");
+        
+        String action = request.getParameter("action");
+        if (action == null) {
+            action = "list"; // Ação padrão
+        }
+
+        try {
+            switch (action) {
+                case "new":
+                    mostrarFormularioNovo(request, response);
+                    break;
+                case "edit":
+                    mostrarFormularioEdicao(request, response);
+                    break;
+                case "delete":
+                    excluirUsuario(request, response);
+                    break;
+                case "list":
+                default:
+                    listarUsuarios(request, response);
+                    break;
+            }
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
+    }
+
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        request.setCharacterEncoding("UTF-8");
+
+        String id = request.getParameter("id");
+        
+        // Se tem ID, é atualização. Se não, é inserção.
+        if (id == null || id.isEmpty()) {
+            inserirUsuario(request, response);
+        } else {
+            atualizarUsuario(request, response);
+        }
+    }
+
+    private void listarUsuarios(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        List<Usuario> listaUsuarios = usuarioDAO.listarUsuarios();
+        request.setAttribute("listaUsuarios", listaUsuarios);
+        RequestDispatcher dispatcher = request.getRequestDispatcher("/usuarios.jsp");
+        dispatcher.forward(request, response);
+    }
+
+    private void mostrarFormularioNovo(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        RequestDispatcher dispatcher = request.getRequestDispatcher("/usuario-form.jsp");
+        dispatcher.forward(request, response);
+    }
+
+    private void mostrarFormularioEdicao(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        int id = Integer.parseInt(request.getParameter("id"));
+        Usuario usuarioExistente = usuarioDAO.buscarUsuarioPorId(id);
+        request.setAttribute("usuario", usuarioExistente);
+        RequestDispatcher dispatcher = request.getRequestDispatcher("/usuario-form.jsp");
+        dispatcher.forward(request, response);
+    }
+
+    private void inserirUsuario(HttpServletRequest request, HttpServletResponse response) 
+            throws IOException {
+        Usuario novoUsuario = new Usuario();
+        novoUsuario.setNomeCompleto(request.getParameter("nome"));
+        novoUsuario.setLogin(request.getParameter("login"));
+        novoUsuario.setEmail(request.getParameter("email"));
+        novoUsuario.setSenhaHash(request.getParameter("senha")); // DAO vai hashear
+        novoUsuario.setStatus(request.getParameter("status"));
+        
+        usuarioDAO.inserirUsuario(novoUsuario);
+        response.sendRedirect(request.getContextPath() + "/usuarios?action=list");
+    }
+
+    private void atualizarUsuario(HttpServletRequest request, HttpServletResponse response) 
+            throws IOException {
+        Usuario usuario = new Usuario();
+        usuario.setId(Integer.parseInt(request.getParameter("id")));
+        usuario.setNomeCompleto(request.getParameter("nome"));
+        usuario.setLogin(request.getParameter("login"));
+        usuario.setEmail(request.getParameter("email"));
+        usuario.setSenhaHash(request.getParameter("senha")); // DAO vai hashear (se não for vazia)
+        usuario.setStatus(request.getParameter("status"));
+        
+        usuarioDAO.atualizarUsuario(usuario);
+        response.sendRedirect(request.getContextPath() + "/usuarios?action=list");
+    }
+
+    private void excluirUsuario(HttpServletRequest request, HttpServletResponse response) 
+            throws IOException {
+        int id = Integer.parseInt(request.getParameter("id"));
+        // Não permitir que o usuário 'admin' (ID 1) seja excluído
+        if (id == 1) {
+            // TODO: Enviar mensagem de erro
+            response.sendRedirect(request.getContextPath() + "/usuarios?action=list");
+            return;
+        }
+        
+        usuarioDAO.excluirUsuario(id);
+        response.sendRedirect(request.getContextPath() + "/usuarios?action=list");
+    }
+}

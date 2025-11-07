@@ -1,0 +1,362 @@
+package br.com.techmaster.g7.dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import br.com.techmaster.g7.model.Perfil;
+import br.com.techmaster.g7.model.Usuario;
+import br.com.techmaster.g7.util.H2Connection;
+import br.com.techmaster.g7.util.HashUtil;
+
+public class UsuarioDAO {
+
+	/**
+     * Valida o login e senha USANDO HASH.
+     */
+    public Usuario validarLogin(String login, String senha) {
+        // Gera o hash da senha que o usuário digitou
+        String hashDaSenhaDigitada = HashUtil.gerarHashSHA256(senha);
+        
+        String sql = "SELECT * FROM T_USUARIO WHERE login = ? AND senha_hash = ? AND status = 'ATIVO'";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, login);
+            pstmt.setString(2, hashDaSenhaDigitada); // Compara HASH com HASH
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    // ... (o restante do método continua igual, carregando o usuário e perfis)
+                    Usuario usuario = new Usuario();
+                    usuario.setId(rs.getInt("id_usuario"));
+                    usuario.setNomeCompleto(rs.getString("nome_completo"));
+                    // ... (etc)
+                    usuario.setPerfis(buscarPerfisPorUsuario(usuario.getId(), conn));
+                    return usuario;
+                }
+            }
+        } catch (SQLException e) {
+            // ... (log de erro)
+        }
+        return null;
+    }
+    
+    /**
+     * Lista todos os usuários do banco.
+     */
+    public List<Usuario> listarUsuarios() {
+        List<Usuario> usuarios = new ArrayList<>();
+        String sql = "SELECT id_usuario, nome_completo, login, email, status FROM T_USUARIO ORDER BY nome_completo";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Usuario usuario = new Usuario();
+                usuario.setId(rs.getInt("id_usuario"));
+                usuario.setNomeCompleto(rs.getString("nome_completo"));
+                usuario.setLogin(rs.getString("login"));
+                usuario.setEmail(rs.getString("email"));
+                usuario.setStatus(rs.getString("status"));
+                // Nota: Não carregamos os perfis aqui para economizar performance (Lazy loading)
+                usuarios.add(usuario);
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao listar usuários: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return usuarios;
+    }
+
+    /**
+     * Busca um usuário específico pelo ID.
+     */
+    public Usuario buscarUsuarioPorId(int id) {
+        String sql = "SELECT * FROM T_USUARIO WHERE id_usuario = ?";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    Usuario usuario = new Usuario();
+                    usuario.setId(rs.getInt("id_usuario"));
+                    usuario.setNomeCompleto(rs.getString("nome_completo"));
+                    usuario.setLogin(rs.getString("login"));
+                    usuario.setEmail(rs.getString("email"));
+                    usuario.setStatus(rs.getString("status"));
+                    // (Aqui não buscamos a senha_hash, é desnecessário)
+                    return usuario;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao buscar usuário por ID: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Insere um novo usuário no banco (com senha hasheada).
+     */
+    public void inserirUsuario(Usuario usuario) {
+        String sql = "INSERT INTO T_USUARIO (nome_completo, login, email, senha_hash, status) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            // Gera o hash da senha
+            String hashSenha = HashUtil.gerarHashSHA256(usuario.getSenhaHash());
+            
+            pstmt.setString(1, usuario.getNomeCompleto());
+            pstmt.setString(2, usuario.getLogin());
+            pstmt.setString(3, usuario.getEmail());
+            pstmt.setString(4, hashSenha); // Salva o hash
+            pstmt.setString(5, usuario.getStatus());
+            
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao inserir usuário: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Atualiza um usuário.
+     * A senha só é atualizada se uma nova for fornecida.
+     */
+    public void atualizarUsuario(Usuario usuario) {
+        // Verifica se a senha foi alterada
+        boolean atualizarSenha = (usuario.getSenhaHash() != null && !usuario.getSenhaHash().isEmpty());
+
+        String sql;
+        if (atualizarSenha) {
+            // SQL para atualizar TUDO, incluindo a senha
+            sql = "UPDATE T_USUARIO SET nome_completo = ?, login = ?, email = ?, status = ?, senha_hash = ? WHERE id_usuario = ?";
+        } else {
+            // SQL para atualizar tudo, EXCETO a senha
+            sql = "UPDATE T_USUARIO SET nome_completo = ?, login = ?, email = ?, status = ? WHERE id_usuario = ?";
+        }
+
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, usuario.getNomeCompleto());
+            pstmt.setString(2, usuario.getLogin());
+            pstmt.setString(3, usuario.getEmail());
+            pstmt.setString(4, usuario.getStatus());
+            
+            if (atualizarSenha) {
+                String hashNovaSenha = HashUtil.gerarHashSHA256(usuario.getSenhaHash());
+                pstmt.setString(5, hashNovaSenha);
+                pstmt.setInt(6, usuario.getId());
+            } else {
+                pstmt.setInt(5, usuario.getId());
+            }
+            
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao atualizar usuário: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Exclui um usuário.
+     * IMPORTANTE: Remove as associações de T_USUARIO_PERFIL primeiro.
+     */
+    public void excluirUsuario(int id) {
+        String sqlPerfil = "DELETE FROM T_USUARIO_PERFIL WHERE id_usuario = ?";
+        String sqlUsuario = "DELETE FROM T_USUARIO WHERE id_usuario = ?";
+        
+        // Usamos uma transação para garantir que ambos sejam executados ou nenhum
+        Connection conn = null;
+        try {
+            conn = H2Connection.getConnection();
+            conn.setAutoCommit(false); // Inicia transação
+
+            // 1. Deleta associações de perfil
+            try (PreparedStatement pstmtPerfil = conn.prepareStatement(sqlPerfil)) {
+                pstmtPerfil.setInt(1, id);
+                pstmtPerfil.executeUpdate();
+            }
+            
+            // TODO: Deletar logs? O PDF não especifica, mas talvez seja
+            // melhor MANTER os logs (T_LOG_ACESSO) por motivo de auditoria,
+            // mesmo após o usuário ser excluído.
+
+            // 2. Deleta o usuário
+            try (PreparedStatement pstmtUsuario = conn.prepareStatement(sqlUsuario)) {
+                pstmtUsuario.setInt(1, id);
+                pstmtUsuario.executeUpdate();
+            }
+            
+            conn.commit(); // Confirma a transação
+
+        } catch (SQLException e) {
+            System.err.println("Erro ao excluir usuário: " + e.getMessage());
+            e.printStackTrace();
+            try {
+                if (conn != null) conn.rollback(); // Desfaz em caso de erro
+            } catch (SQLException e2) {
+                e2.printStackTrace();
+            }
+        } finally {
+            try {
+                if (conn != null) {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
+// ... (Mantenha validarLogin, buscarPerfisPorUsuario (privado), listarUsuarios, etc.)
+    
+    /**
+     * Busca os perfis que JÁ ESTÃO associados a um usuário.
+     * (Versão pública do método que já tínhamos)
+     */
+    public List<Perfil> buscarPerfisAssociados(int idUsuario) {
+        List<Perfil> perfis = new ArrayList<>();
+        String sql = "SELECT p.id_perfil, p.nome_perfil, p.descricao " +
+                     "FROM T_PERFIL p " +
+                     "JOIN T_USUARIO_PERFIL up ON p.id_perfil = up.id_perfil " +
+                     "WHERE up.id_usuario = ?";
+
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, idUsuario);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    perfis.add(new Perfil(
+                        rs.getInt("id_perfil"),
+                        rs.getString("nome_perfil"),
+                        rs.getString("descricao")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao buscar perfis associados: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return perfis;
+    }
+
+    /**
+     * Busca os perfis que NÃO ESTÃO associados a um usuário (disponíveis).
+     */
+    public List<Perfil> buscarPerfisDisponiveis(int idUsuario) {
+        List<Perfil> perfis = new ArrayList<>();
+        
+        // SQL com Sub-Query: Seleciona perfis ONDE o ID não está
+        // na lista de perfis já associados a este usuário.
+        String sql = "SELECT * FROM T_PERFIL " +
+                     "WHERE id_perfil NOT IN " +
+                     "(SELECT id_perfil FROM T_USUARIO_PERFIL WHERE id_usuario = ?)";
+
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, idUsuario);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    perfis.add(new Perfil(
+                        rs.getInt("id_perfil"),
+                        rs.getString("nome_perfil"),
+                        rs.getString("descricao")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao buscar perfis disponíveis: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return perfis;
+    }
+
+    /**
+     * Associa um perfil a um usuário (INSERT em T_USUARIO_PERFIL).
+     */
+    public void adicionarPerfilUsuario(int idUsuario, int idPerfil) {
+        String sql = "INSERT INTO T_USUARIO_PERFIL (id_usuario, id_perfil) VALUES (?, ?)";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, idUsuario);
+            pstmt.setInt(2, idPerfil);
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            // Ignora erro de chave duplicada (usuário já tem o perfil)
+            if (!e.getSQLState().equals("23505")) { // 23505 = Unique key violation
+                System.err.println("Erro ao adicionar perfil ao usuário: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * Remove a associação de um perfil de um usuário (DELETE de T_USUARIO_PERFIL).
+     */
+    public void removerPerfilUsuario(int idUsuario, int idPerfil) {
+        String sql = "DELETE FROM T_USUARIO_PERFIL WHERE id_usuario = ? AND id_perfil = ?";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, idUsuario);
+            pstmt.setInt(2, idPerfil);
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao remover perfil do usuário: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+    /**
+     * Busca os perfis associados a um ID de usuário.
+     * Reutiliza a conexão existente para evitar abrir/fechar múltiplas conexões.
+     */
+    private List<Perfil> buscarPerfisPorUsuario(int idUsuario, Connection conn) throws SQLException {
+        List<Perfil> perfis = new ArrayList<>();
+        
+        // Consulta com JOIN entre T_USUARIO_PERFIL e T_PERFIL
+        String sql = "SELECT p.id_perfil, p.nome_perfil, p.descricao " +
+                     "FROM T_PERFIL p " +
+                     "JOIN T_USUARIO_PERFIL up ON p.id_perfil = up.id_perfil " +
+                     "WHERE up.id_usuario = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, idUsuario);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Perfil perfil = new Perfil();
+                    perfil.setId(rs.getInt("id_perfil"));
+                    perfil.setNomePerfil(rs.getString("nome_perfil"));
+                    perfil.setDescricao(rs.getString("descricao"));
+                    perfis.add(perfil);
+                }
+            }
+        }
+        
+        return perfis;
+    }
+    
+    // TODO: Criar métodos para registrar T_LOG_ACESSO e T_LOG_TENTATIVA_FALHA
+    // Estes métodos serão chamados pelo LoginServlet
+}

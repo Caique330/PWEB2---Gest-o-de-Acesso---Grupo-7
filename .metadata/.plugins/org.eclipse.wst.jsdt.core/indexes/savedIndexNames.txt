@@ -1,0 +1,7 @@
+INDEX VERSION 1.4+C:\Users\Família Silva\Downloads\Grupo_07\.metadata\.plugins\org.eclipse.wst.jsdt.core\indexes
+1342575112.index
+3289212003.index
+263761261.index
+2696915785.index
+1717097926.index
+566615008.index

@@ -1,0 +1,43 @@
+package br.com.techmaster.g7.model;
+
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+// Importação alterada de LocalDateTime para Date
+import java.util.Date;
+
+/**
+ * Representa T_LOG_ACESSO
+ * Alterado para usar java.util.Date para compatibilidade com JSTL
+ */
+public class LogAcesso {
+
+    private int id;
+    private int idUsuario;
+    private int idRecurso;
+    
+    // Tipo de dado alterado
+    private Timestamp dataHoraAcesso;
+    
+    private String acaoExecutada;
+    private String ipOrigem;
+    
+    // Getters e Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public int getIdUsuario() { return idUsuario; }
+    public void setIdUsuario(int idUsuario) { this.idUsuario = idUsuario; }
+    public int getIdRecurso() { return idRecurso; }
+    public void setIdRecurso(int idRecurso) { this.idRecurso = idRecurso; }
+    public String getAcaoExecutada() { return acaoExecutada; }
+    public void setAcaoExecutada(String acaoExecutada) { this.acaoExecutada = acaoExecutada; }
+    public String getIpOrigem() { return ipOrigem; }
+    public void setIpOrigem(String ipOrigem) { this.ipOrigem = ipOrigem; }
+
+    // Getter e Setter alterados para Date
+    public LTimestamp getDataHoraAcesso() {
+        return dataHoraAcesso;
+    }
+    public void setDataHoraAcesso(Timestamp dataHoraAcesso) {
+        this.dataHoraAcesso = dataHoraAcesso;
+    }
+}

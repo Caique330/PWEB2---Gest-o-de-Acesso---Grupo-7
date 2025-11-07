@@ -1,0 +1,70 @@
+package br.com.techmaster.g7.controller;
+
+import java.io.IOException;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import br.com.techmaster.g7.dao.UsuarioDAO;
+import br.com.techmaster.g7.model.Usuario;
+
+// Mapeamos o Servlet para a URL 'login' (que é o 'action' do nosso form)
+@WebServlet("/login")
+public class LoginServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Método GET: Apenas exibe a tela de login.
+     */
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        // Se o usuário já estiver logado, redireciona para o dashboard
+        if (request.getSession(false) != null && request.getSession(false).getAttribute("usuarioLogado") != null) {
+            response.sendRedirect("dashboard.jsp"); // Próxima página que criaremos
+            return;
+        }
+        
+        request.getRequestDispatcher("/login.jsp").forward(request, response);
+    }
+
+    /**
+     * Método POST: Processa a tentativa de login.
+     */
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        String login = request.getParameter("login");
+        String senha = request.getParameter("senha");
+
+        // --- LÓGICA DE AUTENTICAÇÃO ---
+        // (Aqui chamaremos o UsuarioDAO.java)
+        
+        // Simulação (enquanto não temos o DAO):
+        if ("admin".equals(login) && "admin123".equals(senha)) {
+            // Sucesso!
+            
+            // Cria uma sessão para o usuário 
+            HttpSession session = request.getSession();
+            session.setAttribute("usuarioLogado", login); // Armazena o login ou o objeto Usuario
+            session.setMaxInactiveInterval(30 * 60); // 30 minutos de inatividade
+
+            // TODO: Registrar o sucesso no T_LOG_ACESSO [cite: 14]
+            
+            response.sendRedirect("dashboard.jsp"); // Redireciona para a área interna
+        
+        } else {
+            // Falha!
+            
+            // TODO: Registrar a falha no T_LOG_TENTATIVA_FALHA [cite: 9, 58]
+
+            request.setAttribute("erroLogin", "Login ou senha inválidos.");
+            request.getRequestDispatcher("/login.jsp").forward(request, response);
+        }
+    }
+}

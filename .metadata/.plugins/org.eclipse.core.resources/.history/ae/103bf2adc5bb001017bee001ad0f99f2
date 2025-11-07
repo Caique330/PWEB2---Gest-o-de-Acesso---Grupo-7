@@ -1,0 +1,84 @@
+package br.com.techmaster.g7.dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import br.com.techmaster.g7.model.RegraPermissaoDTO;
+import br.com.techmaster.g7.util.H2Connection;
+
+public class RegraDAO {
+
+    /**
+     * Busca as regras que JÁ ESTÃO associadas a um perfil.
+     */
+    public List<RegraPermissaoDTO> buscarRegrasAssociadas(int idPerfil) {
+        List<RegraPermissaoDTO> regras = new ArrayList<>();
+        // Junção de T_REGRA_PERMISSAO, T_RECURSO e T_PERMISSAO
+        String sql = "SELECT reg.id_regra, rec.nome_recurso, perm.nome_permissao " +
+                     "FROM T_REGRA_PERMISSAO reg " +
+                     "JOIN T_RECURSO rec ON reg.id_recurso = rec.id_recurso " +
+                     "JOIN T_PERMISSAO perm ON reg.id_permissao = perm.id_permissao " +
+                     "WHERE reg.id_perfil = ?";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, idPerfil);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    RegraPermissaoDTO regra = new RegraPermissaoDTO();
+                    regra.setIdRegra(rs.getInt("id_regra"));
+                    regra.setNomeRecurso(rs.getString("nome_recurso"));
+                    regra.setNomePermissao(rs.getString("nome_permissao"));
+                    regras.add(regra);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return regras;
+    }
+
+    /**
+     * Adiciona uma nova regra (associando um recurso/permissão a um perfil).
+     */
+    public void adicionarRegra(int idPerfil, int idRecurso, int idPermissao) {
+        String sql = "INSERT INTO T_REGRA_PERMISSAO (id_perfil, id_recurso, id_permissao) VALUES (?, ?, ?)";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, idPerfil);
+            pstmt.setInt(2, idRecurso);
+            pstmt.setInt(3, idPermissao);
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            // Ignora erro de chave duplicada (regra já existe)
+            if (!e.getSQLState().equals("23505")) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * Remove uma regra pelo seu ID único.
+     */
+    public void removerRegra(int idRegra) {
+        String sql = "DELETE FROM T_REGRA_PERMISSAO WHERE id_regra = ?";
+        
+        try (Connection conn = H2Connection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, idRegra);
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
